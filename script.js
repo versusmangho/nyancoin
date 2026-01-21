@@ -305,7 +305,7 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
         msg: "납품 비추천 (효율 낮음)", 
         averageEfficiency: eff.toFixed(3), 
         unitCost: unitCost.toFixed(1),
-        consumedCoin: consumedCoin.toFixed(1), // Add consumedCoin here
+        consumedCoin: (consumedCoin * req).toFixed(1), // Add consumedCoin here
         totalCost: (unitCost * req).toFixed(0),
         totalStamina: (unitStamina * req).toFixed(0),
         totalItems: req, // Add totalItems for consistency
@@ -339,7 +339,7 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
       totalProfit: totalProfit,
       averageEfficiency: averageEfficiency.toFixed(3),
       unitCost: unitCost.toFixed(1),
-      consumedCoin: consumedCoin.toFixed(1), // Add consumedCoin here
+      consumedCoin: (consumedCoin * finalTotalItems).toFixed(1),
       totalCost: totalCost.toFixed(0),
       totalStamina: (unitStamina * finalTotalItems).toFixed(0)
     };
@@ -375,7 +375,7 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
       totalProfit: totalProfit,
       averageEfficiency: averageEfficiency.toFixed(3),
       unitCost: unitCost.toFixed(1),
-      consumedCoin: consumedCoin.toFixed(1), // Add consumedCoin here
+      consumedCoin: (consumedCoin * currentTotal).toFixed(1), // Add consumedCoin here
       totalCost: totalCost.toFixed(0),
       totalStamina: (unitStamina * currentTotal).toFixed(0)
     };
@@ -621,12 +621,19 @@ function initCalculator() {
         html2canvas(target, {
           useCORS: true,
           scale: 2,
-          // Set a background color, as the default is transparent
           backgroundColor: '#f8fafc',
           onclone: (clonedDoc) => {
-            // Optional: Modify the cloned document before capture
-            // For instance, ensure all elements are in a consistent state
-            // This can be useful for elements with hover states
+            // Add padding to the cloned element for better spacing in the output image
+            const clonedTarget = clonedDoc.getElementById('calculator-app');
+            if (clonedTarget) {
+              clonedTarget.style.padding = '20px';
+            }
+            
+            // Hide the capture button in the cloned document
+            const captureButton = clonedDoc.getElementById('captureBtn');
+            if (captureButton && captureButton.parentElement) {
+              captureButton.parentElement.style.display = 'none';
+            }
           }
         }).then(canvas => {
           const image = canvas.toDataURL('image/png');
