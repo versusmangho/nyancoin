@@ -52,7 +52,17 @@
     <div id="grid-container" class="grid-layout"></div>
 
     <div style="text-align: center; margin-top: 20px;">
-      <button id="captureBtn" class="btn">📸 이미지로 저장</button>
+      <button id="captureBtn" class="btn">이미지로 저장</button>
+    </div>
+
+    <!-- 클립보드 가져오기/내보내기 -->
+    <div id="clipboard-section" class="card" style="margin-top: 20px;">
+      <h3>정보 일괄 입출력</h3>
+      <textarea id="clipboard-data" class="input" rows="4" placeholder="예시 : 치마 샘플 800, 바지 샘플 600, 안경 샘플 800, 매쉬드 포테이토 300, 편육 150, 오징어볶음면 600, 생선 꼬치구이 600, 크림 홍합찜 800"></textarea>
+      <div class="btn-group">
+        <button id="importBtn" class="btn">붙여넣기</button>
+        <button id="exportBtn" class="btn">복사하기</button>
+      </div>
     </div>
 
   </div>

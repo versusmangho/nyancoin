@@ -160,3 +160,24 @@ header nav a:hover { text-decoration: underline; }
   font-size: 16px;
   font-weight: bold;
 }
+
+/* 클립보드 섹션 스타일 */
+#clipboard-section {
+  min-height: auto;
+  max-width: 700px;
+  margin: 20px auto 0 auto;
+}
+#clipboard-section h3 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+#clipboard-section .btn-group {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+/* 복사 완료 시 버튼 스타일 */
+.btn.copied {
+  background-color: #16a34a; /* 초록색 */
+}

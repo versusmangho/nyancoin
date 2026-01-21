@@ -46,7 +46,7 @@ async function loadData() {
     }
     const calcFileInput = document.getElementById('calcFileInput');
     if (calcFileInput) {
-      alert("기본 data.json 파일을 로드하지 못했습니다. 아래 '로컬 테스트 모드'에서 data.json 파일을 직접 선택해주세요.");
+      console.log("기본 data.json 파일을 로드하지 못했습니다. 아래 '로컬 테스트 모드'에서 data.json 파일을 직접 선택해주세요.");
       // Ensure the event listener is only added once
       if (!calcFileInput.dataset.listenerAdded) {
         calcFileInput.dataset.listenerAdded = 'true'; // Mark as added
@@ -55,7 +55,7 @@ async function loadData() {
           if (file) {
             processJsonFile(file, (json) => {
               appData = json;
-              alert('로컬 data.json 파일 로드 완료!');
+              console.log('로컬 data.json 파일 로드 완료!');
               // Re-initialize calculator after loading data
               initCalculator();
               // Clear input value to allow re-selecting the same file
@@ -66,7 +66,7 @@ async function loadData() {
       }
     }
   } else if (!dataLoaded && document.getElementById('editor-app')) {
-    alert("기본 data.json 파일을 로드하지 못했습니다. '기존 파일 불러오기'를 통해 data.json 파일을 직접 선택해주세요.");
+    console.log("기본 data.json 파일을 로드하지 못했습니다. '기존 파일 불러오기'를 통해 data.json 파일을 직접 선택해주세요.");
   }
 }
 
@@ -79,10 +79,10 @@ function processJsonFile(file, callback) {
       if (json.materials && json.recipes && json.settings) { // Check for expected structure
         callback(json);
       } else {
-        alert('올바르지 않은 JSON 파일 형식입니다. (materials, recipes, settings 중 누락)');
+        console.log('올바르지 않은 JSON 파일 형식입니다. (materials, recipes, settings 중 누락)');
       }
     } catch (err) {
-      alert('파일을 읽는 중 오류가 발생했습니다.');
+      console.log('파일을 읽는 중 오류가 발생했습니다.');
       console.error(err);
     }
   };
@@ -141,7 +141,7 @@ function getTotalCostIncludingStamina(itemName, visited = new Set(), conservatio
   }
   // Get the effective stamina for this item, including all adjustments (e.g., intermediate, weaving recovery)
   // This value is then converted to NyanCoin and added to the cost.
-  const effectiveStaminaForThisItem = getStamina(itemName, new Set(), conservationLevel, false);
+  const effectiveStaminaForThisItem = getStamina(itemName, new Set(), conservationLevel);
   cost += effectiveStaminaForThisItem * (appData.settings.stamina_cost || 0);
 
   return cost;
@@ -191,7 +191,7 @@ function getMaterialCost(itemName, visited = new Set(), conservationLevel = 0) {
   return cost;
 }
 
-function getStamina(itemName, visited = new Set(), conservationLevel = 0, isSubCall = false) {
+function getStamina(itemName, visited = new Set(), conservationLevel = 0) {
   if (visited.has(itemName)) {
     return 0;
   }
@@ -204,14 +204,8 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0, isSubC
   const { recipe } = found;
   visited.add(itemName);
 
-  let currentItemStamina = recipe.stamina || 0; // 현재 아이템의 직접 스태미나
-
-  // '중간재료 스태미나 미포함' 설정이 켜져있고 현재 아이템이 '가공품' 또는 '방직' 카테고리라면
-  if (isSubCall && appData.settings.ignoreIntermediateStamina && (recipe.category === '가공품' || recipe.category === '방직')) {
-    currentItemStamina = 0; // 이 아이템의 직접 스태미나는 0으로 처리
-  }
-
-  let totalStamina = currentItemStamina; // 총 스태미나에 현재 아이템의 스태미나부터 더하기
+  const currentItemStamina = recipe.stamina || 0;
+  let totalStamina = currentItemStamina;
 
   if (recipe.ingredients) {
     let reductionFactor = 1;
@@ -221,12 +215,15 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0, isSubC
     }
     for (const [ingName, count] of Object.entries(recipe.ingredients)) {
       const reducedCount = Math.round(count * reductionFactor);
-      // 재귀 호출된 재료의 스태미나는 항상 포함 (여기서 중간재료 여부 판단은 getStamina 내부에서 처리)
-      totalStamina += getStamina(ingName, new Set(visited), conservationLevel, true) * reducedCount;
+      totalStamina += getStamina(ingName, new Set(visited), conservationLevel) * reducedCount;
     }
   }
-  
 
+  // If ignoreIntermediateStamina is ON and this item is an intermediate product,
+  // subtract its own stamina contribution from the total, but keep the ingredient stamina.
+  if (appData.settings.ignoreIntermediateStamina && (recipe.category === '가공품' || recipe.category === '방직')) {
+    return totalStamina - currentItemStamina;
+  }
 
   return totalStamina;
 }
@@ -268,7 +265,7 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
     return unitCostResult;
   }
   const unitCost = unitCostResult;
-  const unitStamina = getStamina(itemName, new Set(), conservationLevel, false);
+  const unitStamina = getStamina(itemName, new Set(), conservationLevel);
 
 
   if (unitCost === 0) return { error: "generic_cost_error" };
@@ -387,6 +384,25 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
 
 let slotResults = {}; // 슬롯별 계산 결과를 저장하는 전역 객체
 
+function updateClipboardTextarea() {
+  const clipboardDataEl = document.getElementById('clipboard-data');
+  if (!clipboardDataEl) return;
+
+  const data = [];
+  for (let i = 1; i <= 8; i++) {
+    const nameInput = document.getElementById(`name-${i}`);
+    const rewardInput = document.getElementById(`reward-${i}`);
+    if (nameInput && rewardInput) {
+      const name = nameInput.value.trim();
+      const reward = rewardInput.value.trim();
+      if (name && reward) {
+        data.push(`${name} ${reward}`);
+      }
+    }
+  }
+  clipboardDataEl.value = data.join(', ');
+}
+
 function updateTotalSummary() {
   let totalCoin = 0;
   let totalStamina = 0;
@@ -416,6 +432,8 @@ function updateTotalSummary() {
   if (elStamina) elStamina.textContent = totalStamina.toLocaleString();
   if (elNyan) elNyan.textContent = totalNyan.toLocaleString();
   if (elRatio) elRatio.textContent = finalRatio;
+
+  updateClipboardTextarea(); // Keep clipboard textarea in sync
 }
 
 function recalculateAllSlots() {
@@ -655,13 +673,85 @@ function initCalculator() {
 
         }).catch(err => {
           console.error("Image capture failed:", err);
-          alert("오류: 이미지 생성에 실패했습니다. 콘솔을 확인해주세요.");
+          console.log("오류: 이미지 생성에 실패했습니다. 콘솔을 확인해주세요.");
           
           // Restore button state
           captureButton.textContent = '📸 이미지로 저장';
           captureButton.disabled = false;
         });
       }
+    });
+  }
+
+  // --- Clipboard Import/Export Logic ---
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const clipboardDataEl = document.getElementById('clipboard-data');
+
+  if (exportBtn) {
+    const originalBtnText = exportBtn.innerHTML;
+
+    exportBtn.addEventListener('click', () => {
+      const exportString = clipboardDataEl.value;
+      navigator.clipboard.writeText(exportString).then(() => {
+        exportBtn.innerHTML = '복사됨!';
+        exportBtn.classList.add('copied');
+        exportBtn.disabled = true;
+
+        setTimeout(() => {
+          exportBtn.innerHTML = originalBtnText;
+          exportBtn.classList.remove('copied');
+          exportBtn.disabled = false;
+        }, 1000);
+
+      }).catch(err => {
+        console.log('클립보드 복사에 실패했습니다.');
+        console.error('Clipboard copy failed:', err);
+      });
+    });
+  }
+
+  if (importBtn) {
+    importBtn.addEventListener('click', () => {
+      const importString = clipboardDataEl.value.trim();
+      if (!importString) {
+        console.log('붙여넣을 데이터가 없습니다.');
+        return;
+      }
+
+      // Clear existing slots before importing
+      for (let i = 1; i <= 8; i++) {
+        const nameInput = document.getElementById(`name-${i}`);
+        const rewardInput = document.getElementById(`reward-${i}`);
+        if (nameInput && rewardInput) {
+          nameInput.value = '';
+          rewardInput.value = '';
+        }
+      }
+
+      const parts = importString.split(',').map(s => s.trim());
+      parts.forEach((part, index) => {
+        if (index < 8) { // Only process up to 8 slots
+          const slotIndex = index + 1;
+          const lastSpaceIndex = part.lastIndexOf(' ');
+          
+          if (lastSpaceIndex > 0) {
+            const name = part.substring(0, lastSpaceIndex).trim();
+            const reward = part.substring(lastSpaceIndex + 1).trim();
+
+            const nameInput = document.getElementById(`name-${slotIndex}`);
+            const rewardInput = document.getElementById(`reward-${slotIndex}`);
+
+            if (nameInput && rewardInput) {
+              nameInput.value = name;
+              rewardInput.value = reward;
+            }
+          }
+        }
+      });
+
+      recalculateAllSlots();
+      console.log('데이터를 붙여넣고 재계산했습니다.');
     });
   }
 }
@@ -844,7 +934,7 @@ function initEditor() {
       renderList('materials');
       renderList('recipes');
       renderJsonPreview();
-      alert('데이터를 성공적으로 불러왔습니다!');
+      console.log('데이터를 성공적으로 불러왔습니다!');
       // 파일 입력 초기화 (같은 파일 다시 선택 가능하도록)
       document.getElementById('fileInput').value = '';
     });
