@@ -99,7 +99,7 @@ function findRecipe(itemName) {
   return null;
 }
 
-function getTotalCostIncludingStamina(itemName, visited = new Set(), conservationLevel = 0) {
+function getTotalCostIncludingStamina(itemName, visited = new Set(), conservationLevel = 0, isRoot = true) {
   // Check if it's a material
   if (appData.materials && appData.materials[itemName] !== undefined) {
     if (appData.materials[itemName] <= 0) {
@@ -132,17 +132,25 @@ function getTotalCostIncludingStamina(itemName, visited = new Set(), conservatio
     for (const [ingName, count] of Object.entries(recipe.ingredients)) {
       const reducedCount = Math.round(count * reductionFactor);
       // Create a new Set for the recursive call to avoid issues with parallel branches
-      const ingCost = getTotalCostIncludingStamina(ingName, new Set(visited), conservationLevel); 
+      // Pass isRoot = false for ingredients
+      const ingCost = getTotalCostIncludingStamina(ingName, new Set(visited), conservationLevel, false); 
       if (typeof ingCost === 'object' && ingCost.error) {
         return ingCost; // Propagate the error
       }
       cost += ingCost * reducedCount;
     }
   }
-  // Get the effective stamina for this item, including all adjustments (e.g., intermediate, weaving recovery)
-  // This value is then converted to NyanCoin and added to the cost.
-  const effectiveStaminaForThisItem = getStamina(itemName, new Set(), conservationLevel);
-  cost += effectiveStaminaForThisItem * (appData.settings.stamina_cost || 0);
+  
+  // Calculate stamina cost for this specific item
+  let localStamina = recipe.stamina || 0;
+
+  // If "Ignore Intermediate Stamina" is ON, we ONLY count stamina for the ROOT item.
+  // Ingredients (where isRoot is false) contribute 0 stamina cost to the total.
+  if (appData.settings.ignoreIntermediateStamina && !isRoot) {
+    localStamina = 0;
+  }
+
+  cost += localStamina * (appData.settings.stamina_cost || 0);
 
   return cost;
 }
@@ -202,6 +210,12 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0, isRoot
   }
   
   const { recipe } = found;
+  
+  // If Ignore Intermediate Stamina is ON, and this is an ingredient (not root), return 0.
+  if (appData.settings.ignoreIntermediateStamina && !isRoot) {
+    return 0;
+  }
+
   visited.add(itemName);
 
   const currentItemStamina = recipe.stamina || 0;
@@ -218,13 +232,6 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0, isRoot
       // Recursive call to getStamina, marking isRoot as false for ingredients
       totalStamina += getStamina(ingName, new Set(visited), conservationLevel, false) * reducedCount;
     }
-  }
-
-  // If ignoreIntermediateStamina is ON and this item is an intermediate product,
-  // subtract its own stamina contribution from the total, but keep the ingredient stamina.
-  // Exception: If this is the ROOT item being calculated (isRoot === true), do NOT subtract.
-  if (!isRoot && appData.settings.ignoreIntermediateStamina && (recipe.category === '가공품' || recipe.category === '방직')) {
-    return totalStamina - currentItemStamina;
   }
 
   return totalStamina;
