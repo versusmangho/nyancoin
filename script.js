@@ -402,7 +402,9 @@ function updateTotalSummary() {
     }
   }
 
-  const finalRatio = totalCoin > 0 ? (totalNyan / totalCoin).toFixed(3) : 0;
+  const staminaValue = totalStamina * (appData.settings.stamina_cost || 0);
+  const totalValue = totalCoin + staminaValue;
+  const finalRatio = totalValue > 0 ? (totalNyan / totalValue).toFixed(3) : 0;
 
   // Check if elements exist before setting textContent to avoid errors
   const elCoin = document.getElementById('total-coin-cost');
