@@ -29,12 +29,12 @@ header nav a:hover { text-decoration: underline; }
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 15px;
+  padding: 20px;
   width: 100%;
   flex: 1;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   transition: transform 0.2s;
-  height: 340px;
+  min-height: 340px; /* Minimum height to maintain consistent card size */
   display: flex;
   flex-direction: column;
 }
@@ -75,7 +75,7 @@ header nav a:hover { text-decoration: underline; }
 /* 결과창 */
 .result-box {
   margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color);
-  font-size: 13px; display: none; /* 기본 숨김 */
+  font-size: 14px; display: none; /* 기본 숨김 */
 }
 .result-box.active { display: block; }
 .badge {
@@ -90,12 +90,14 @@ header nav a:hover { text-decoration: underline; }
 .stat-row { display: flex; justify-content: space-between; margin-top: 4px; }
 .profit { color: var(--primary-color); font-weight: bold; }
 
-/* 공통 폼 요소 */
+/* 공통 폼 요소 - html2canvas 짤림 현상 수정 */
 .input, .select-box {
-  padding: 8px 12px;
+  padding: 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 14px;
+  line-height: 1.5; /* 텍스트 잘림 방지를 위해 줄 높이 명시 */
+  vertical-align: middle; /* 수직 정렬 명시 */
   outline: none;
   width: 100%;
   background-color: white;
@@ -124,8 +126,6 @@ header nav a:hover { text-decoration: underline; }
 .btn-secondary { background: #64748b; }
 
 @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-
-/* 불필요해진 checkbox-settings-column 클래스 관련 스타일 제거 */
 
 /* 종합 효율 요약 카드 스타일 */
 #total-summary {

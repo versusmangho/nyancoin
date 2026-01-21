@@ -206,8 +206,8 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0) {
 
   let currentItemStamina = recipe.stamina || 0; // 현재 아이템의 직접 스태미나
 
-  // '중간재료 스태미나 미포함' 설정이 켜져있고 현재 아이템이 '가공품' 카테고리라면
-  if (appData.settings.ignoreIntermediateStamina && recipe.category === '가공품') {
+  // '중간재료 스태미나 미포함' 설정이 켜져있고 현재 아이템이 '가공품' 또는 '방직' 카테고리라면
+  if (appData.settings.ignoreIntermediateStamina && (recipe.category === '가공품' || recipe.category === '방직')) {
     currentItemStamina = 0; // 이 아이템의 직접 스태미나는 0으로 처리
   }
 
