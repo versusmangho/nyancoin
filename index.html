@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>오버필드 냥코인 계산기</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+</head>
+<body>
+  <div class="container" id="calculator-app">
+    <header>
+      <h1>개인화 냥코인 효율표</h1>
+
+      <!-- 환경설정 그룹 -->
+      <div class="settings-group">
+        <div class="input-group">
+          <label for="efficiencyLimit">마지노선 효율</label>
+          <input type="number" id="efficiencyLimit" class="input" step="0.01" value="0.36">
+        </div>
+        <div class="input-group">
+          <label for="conservationLevel">절약 레벨</label>
+          <input type="number" id="conservationLevel" class="input" min="0" max="10" step="1" value="10">
+        </div>
+        <div class="input-group">
+          <label for="wlbLevel">워라밸 레벨</label>
+          <input type="number" id="wlbLevel" class="input" min="0" max="10" step="1" value="10">
+        </div>
+        <div class="input-group">
+          <label for="staminaCost">스태미나 1당 가치</label>
+          <input type="number" id="staminaCost" class="input" step="0.01" value="8.55">
+        </div>
+        <div class="checkbox-settings-column">
+            <div class="input-group checkbox-group">
+              <label for="ignoreIntermediateStamina">중간재료 스태미나 미포함</label>
+              <input type="checkbox" id="ignoreIntermediateStamina" class="checkbox">
+            </div>
+            <div class="input-group checkbox-group">
+              <label for="toggleWeavingStaminaRecovery">방직 스태미나 회복 계산에 포함</label>
+              <input type="checkbox" id="toggleWeavingStaminaRecovery" class="checkbox">
+            </div>
+        </div>
+      </div>
+
+      <!-- 로컬 테스트용 파일 불러오기 추가 -->
+      <div style="margin-top: 15px; padding: 10px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; display: inline-block; text-align: left;">
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 5px;">
+          ⚠️ <b>로컬 테스트 모드:</b> 데이터가 안 보인다면 다운로드 받은 <b>data.json</b>을 선택하세요.
+        </p>
+        <input type="file" id="calcFileInput" accept=".json" style="font-size: 12px;">
+      </div>
+    </header>
+
+    <!-- 자동완성 데이터리스트 -->
+    <datalist id="itemList"></datalist>
+
+    <!-- 3-2-3 그리드가 여기에 생성됩니다 -->
+    <div id="grid-container" class="grid-layout"></div>
+
+  </div>
+  <script src="./script.js"></script>
+</body>
+</html>

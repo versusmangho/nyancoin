@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>오버필드 데이터 관리자</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+</head>
+<body>
+  <div class="container" id="editor-app">
+    <header>
+      <h1>재료 및 레시피 관리</h1>
+    </header>
+
+    <!-- 데이터 불러오기 및 내보내기 -->
+    <div class="editor-section" style="background:#e0e7ff; border-color:#818cf8;">
+      <h3>📂 데이터 관리 (불러오기 / 저장)</h3>
+      
+      <!-- 불러오기 영역 -->
+      <div style="margin: 15px 0; padding-bottom: 15px; border-bottom: 1px dashed #a5b4fc;">
+        <p style="font-size:13px; font-weight:bold; margin-bottom:5px; color:#4338ca;">1. 기존 파일 불러오기</p>
+        <p style="font-size:12px; margin-bottom:8px; color:#666;">
+          PC에 저장해둔 <b>data.json</b> 파일이 있다면 선택하세요. 내용을 이어서 편집할 수 있습니다.
+        </p>
+        <input type="file" id="fileInput" accept=".json" style="background:white; padding:5px; border-radius:4px; font-size:12px;">
+      </div>
+
+      <!-- 내보내기 영역 -->
+      <div>
+        <p style="font-size:13px; font-weight:bold; margin-bottom:5px; color:#4338ca;">2. 편집한 내용 저장하기</p>
+        <p style="font-size:12px; margin-bottom:8px; color:#666;">
+          작업이 끝나면 다운로드하여 웹사이트 폴더의 <b>data.json</b>을 덮어쓰세요.
+        </p>
+        <button id="downloadBtn" class="btn">JSON 파일 다운로드</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- 재료 관리 -->
+      <div class="card">
+        <h3>기초 재료 관리</h3>
+        <div class="input-group" style="margin-top:10px;">
+          <input type="text" id="matName" class="input" placeholder="재료명 (예: 설탕)">
+          <input type="number" id="matPrice" class="input" placeholder="상점 가격">
+          <button id="addMatBtn" class="btn" style="margin-top:5px;">추가</button>
+        </div>
+        <div id="materialsList" class="editor-list"></div>
+      </div>
+
+      <!-- 레시피 관리 -->
+      <div class="card">
+        <h3>레시피 관리</h3>
+        <div class="input-group" style="margin-top:10px;">
+          <input type="text" id="recName" class="input" placeholder="제작품 이름 (예: 고급요리)">
+          <input type="number" id="recStamina" class="input" placeholder="필요 스태미나">
+          <input type="text" id="recIngs" class="input" placeholder="재료 (형식: 콩 2, 소금 1)">
+          <div id="recCategoryGroup" class="input-group" style="margin-top: 5px;">
+            <label for="recCategory">카테고리</label>
+            <select id="recCategory" class="select-box">
+              <option value="무침">무침</option>
+              <option value="볶음">볶음</option>
+              <option value="바비큐">바비큐</option>
+              <option value="찜&조림">찜&조림</option>
+              <option value="방직">방직</option>
+            </select>
+          </div>
+          <div class="radio-group" style="margin-top: 5px;">
+            <label><input type="radio" name="recipeType" value="intermediate" checked> 중간재료</label>
+            <label><input type="radio" name="recipeType" value="final"> 완제품</label>
+          </div>
+          <button id="addRecipeBtn" class="btn" style="margin-top:5px;">추가</button>
+        </div>
+        <div id="recipesList" class="editor-list"></div>
+      </div>
+    </div>
+
+    <!-- 미리보기 -->
+    <div class="editor-section" style="margin-top: 20px;">
+      <h3>JSON 미리보기</h3>
+      <pre id="jsonPreview" style="background:#f1f5f9; padding:10px; border-radius:6px; overflow-x:auto; font-size:12px;"></pre>
+    </div>
+
+  </div>
+  <script src="./script.js"></script>
+</body>
+</html>
