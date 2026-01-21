@@ -608,6 +608,55 @@ function initCalculator() {
   });
   // Perform an initial recalculation after all elements are in the DOM
   recalculateAllSlots(); 
+
+  const captureButton = document.getElementById('captureBtn');
+  if (captureButton) {
+    captureButton.addEventListener('click', () => {
+      // Temporarily change button text
+      captureButton.textContent = '...이미지 생성중...';
+      captureButton.disabled = true;
+
+      const target = document.getElementById('calculator-app');
+      if (target) {
+        html2canvas(target, {
+          useCORS: true,
+          scale: 2,
+          // Set a background color, as the default is transparent
+          backgroundColor: '#f8fafc',
+          onclone: (clonedDoc) => {
+            // Optional: Modify the cloned document before capture
+            // For instance, ensure all elements are in a consistent state
+            // This can be useful for elements with hover states
+          }
+        }).then(canvas => {
+          const image = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = image;
+          
+          // Create a filename with the current date
+          const date = new Date();
+          const dateString = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+          link.download = `nyancoin_table_${dateString}.png`;
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Restore button state
+          captureButton.textContent = '📸 이미지로 저장';
+          captureButton.disabled = false;
+
+        }).catch(err => {
+          console.error("Image capture failed:", err);
+          alert("오류: 이미지 생성에 실패했습니다. 콘솔을 확인해주세요.");
+          
+          // Restore button state
+          captureButton.textContent = '📸 이미지로 저장';
+          captureButton.disabled = false;
+        });
+      }
+    });
+  }
 }
 
 function createSlot(idx) {
