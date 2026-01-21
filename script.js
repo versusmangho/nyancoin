@@ -34,7 +34,16 @@ async function loadData() {
   }
 
   // If on calculator page and data was not loaded from server, try local file input
-  if (!dataLoaded && document.getElementById('calculator-app')) {
+  // Get reference to local test mode section
+  const localTestModeSection = document.getElementById('localTestModeSection');
+
+  if (dataLoaded && localTestModeSection) {
+    localTestModeSection.style.display = 'none'; // Hide if data loaded successfully
+  } else if (!dataLoaded && document.getElementById('calculator-app')) {
+    // If data not loaded and on calculator page, show local test mode section (if it exists)
+    if (localTestModeSection) {
+        localTestModeSection.style.display = 'inline-block'; // Ensure it's visible
+    }
     const calcFileInput = document.getElementById('calcFileInput');
     if (calcFileInput) {
       alert("기본 data.json 파일을 로드하지 못했습니다. 아래 '로컬 테스트 모드'에서 data.json 파일을 직접 선택해주세요.");
@@ -84,18 +93,13 @@ function processJsonFile(file, callback) {
 
 // Helper to find a recipe and its type
 function findRecipe(itemName) {
-  if (appData.recipes) {
-    if (appData.recipes.intermediate && appData.recipes.intermediate[itemName]) {
-      return { recipe: appData.recipes.intermediate[itemName], type: 'intermediate' };
-    }
-    if (appData.recipes.final && appData.recipes.final[itemName]) {
-      return { recipe: appData.recipes.final[itemName], type: 'final' };
-    }
+  if (appData.recipes && appData.recipes[itemName]) {
+    return { recipe: appData.recipes[itemName] };
   }
   return null;
 }
 
-function getCost(itemName, visited = new Set(), conservationLevel = 0) {
+function getTotalCostIncludingStamina(itemName, visited = new Set(), conservationLevel = 0) {
   // Check if it's a material
   if (appData.materials && appData.materials[itemName] !== undefined) {
     if (appData.materials[itemName] <= 0) {
@@ -109,7 +113,7 @@ function getCost(itemName, visited = new Set(), conservationLevel = 0) {
   if (!found) {
     return { error: "item_not_found", itemName: itemName };
   }
-  const { recipe, type } = found;
+  const { recipe } = found;
 
   // Detect circular dependencies
   if (visited.has(itemName)) {
@@ -120,22 +124,70 @@ function getCost(itemName, visited = new Set(), conservationLevel = 0) {
   let cost = 0; // Initialize cost
 
   if (recipe.ingredients) {
+    // Conservation applies to specific final products, not general processed goods or '방직'
     let reductionFactor = 1;
-    if (type === 'final' && recipe.category !== '방직') {
+    if (recipe.category !== '가공품' && recipe.category !== '방직') {
       reductionFactor = (1 - (conservationLevel * 0.05));
     }
     for (const [ingName, count] of Object.entries(recipe.ingredients)) {
       const reducedCount = Math.round(count * reductionFactor);
       // Create a new Set for the recursive call to avoid issues with parallel branches
-      const ingCost = getCost(ingName, new Set(visited), conservationLevel); 
+      const ingCost = getTotalCostIncludingStamina(ingName, new Set(visited), conservationLevel); 
       if (typeof ingCost === 'object' && ingCost.error) {
         return ingCost; // Propagate the error
       }
       cost += ingCost * reducedCount;
     }
   }
-  cost += (recipe.stamina || 0) * (appData.settings.stamina_cost || 0);
+  // Get the effective stamina for this item, including all adjustments (e.g., intermediate, weaving recovery)
+  // This value is then converted to NyanCoin and added to the cost.
+  const effectiveStaminaForThisItem = getStamina(itemName, new Set(), conservationLevel);
+  cost += effectiveStaminaForThisItem * (appData.settings.stamina_cost || 0);
 
+  return cost;
+}
+
+function getMaterialCost(itemName, visited = new Set(), conservationLevel = 0) {
+  // Check if it's a material
+  if (appData.materials && appData.materials[itemName] !== undefined) {
+    if (appData.materials[itemName] <= 0) {
+      return { error: "material_price_missing", materialName: itemName };
+    }
+    return appData.materials[itemName];
+  }
+
+  // Check if it's a recipe
+  const found = findRecipe(itemName);
+  if (!found) {
+    return { error: "item_not_found", itemName: itemName };
+  }
+  const { recipe } = found;
+
+  // Detect circular dependencies
+  if (visited.has(itemName)) {
+    return { error: "circular_dependency", itemName: itemName };
+  }
+  visited.add(itemName);
+
+  let cost = 0; // This is now material cost
+
+  if (recipe.ingredients) {
+    // Conservation applies to specific final products, not general processed goods or '방직'
+    let reductionFactor = 1;
+    if (recipe.category !== '가공품' && recipe.category !== '방직') {
+      reductionFactor = (1 - (conservationLevel * 0.05));
+    }
+    for (const [ingName, count] of Object.entries(recipe.ingredients)) {
+      const reducedCount = Math.round(count * reductionFactor);
+      // Recursive call to getMaterialCost
+      const ingCost = getMaterialCost(ingName, new Set(visited), conservationLevel); 
+      if (typeof ingCost === 'object' && ingCost.error) {
+        return ingCost;
+      }
+      cost += ingCost * reducedCount;
+    }
+  }
+  // No stamina cost addition here, as this function is purely for material cost
   return cost;
 }
 
@@ -149,29 +201,34 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0) {
     return 0; // It's a material or not found, no stamina cost
   }
   
-  const { recipe, type } = found;
+  const { recipe } = found;
   visited.add(itemName);
 
-  let stamina = recipe.stamina || 0;
+  let currentItemStamina = recipe.stamina || 0; // 현재 아이템의 직접 스태미나
+
+  // '중간재료 스태미나 미포함' 설정이 켜져있고 현재 아이템이 '가공품' 카테고리라면
+  if (appData.settings.ignoreIntermediateStamina && recipe.category === '가공품') {
+    currentItemStamina = 0; // 이 아이템의 직접 스태미나는 0으로 처리
+  }
+
+  let totalStamina = currentItemStamina; // 총 스태미나에 현재 아이템의 스태미나부터 더하기
+
   if (recipe.ingredients) {
     let reductionFactor = 1;
-    if (type === 'final' && recipe.category !== '방직') {
+    // Conservation applies to specific final products, not general processed goods or '방직'
+    if (recipe.category !== '가공품' && recipe.category !== '방직') {
       reductionFactor = (1 - (conservationLevel * 0.05));
     }
     for (const [ingName, count] of Object.entries(recipe.ingredients)) {
       const reducedCount = Math.round(count * reductionFactor);
-      // Create a new Set for the recursive call
-      stamina += getStamina(ingName, new Set(visited), conservationLevel) * reducedCount;
+      // 재귀 호출된 재료의 스태미나는 항상 포함 (여기서 중간재료 여부 판단은 getStamina 내부에서 처리)
+      totalStamina += getStamina(ingName, new Set(visited), conservationLevel) * reducedCount;
     }
   }
-  // Apply weaving stamina recovery if enabled and applicable
-  if (appData.settings.calculateWeavingStaminaRecovery &&
-      type === 'final' &&
-      recipe.category === '방직') {
-    stamina -= (appData.settings.weaving_stamina_recovery_amount || 0); // Subtract recovery amount
-  }
+  
 
-  return stamina;
+
+  return totalStamina;
 }
 
 // 워라밸 레벨에 따른 스태미나 가치 계산 (매듭끈 체인 기준)
@@ -200,7 +257,12 @@ function getReqCount(deliveryNumber) {
 
 function calcEfficiency(itemName, reward, deliveryMode = 'default') {
   const conservationLevel = (appData.settings && appData.settings.conservation_level !== undefined) ? appData.settings.conservation_level : 10;
-  const unitCostResult = getCost(itemName, new Set(), conservationLevel);
+  const materialCostResult = getMaterialCost(itemName, new Set(), conservationLevel);
+  if (typeof materialCostResult === 'object' && materialCostResult.error) {
+    return materialCostResult;
+  }
+  const consumedCoin = materialCostResult;
+  const unitCostResult = getTotalCostIncludingStamina(itemName, new Set(), conservationLevel);
   
   if (typeof unitCostResult === 'object' && unitCostResult.error) {
     return unitCostResult;
@@ -208,26 +270,32 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
   const unitCost = unitCostResult;
   const unitStamina = getStamina(itemName, new Set(), conservationLevel);
 
+
   if (unitCost === 0) return { error: "generic_cost_error" };
 
   if (deliveryMode === 'default') {
     // 1. 마지노선 효율을 넘는 최대 납품 횟수(maxDeliveries)를 찾습니다.
     let maxDeliveries = 0;
     let keepChecking = true;
+    let totalItemsForAvg = 0;
     while (keepChecking && maxDeliveries < 50) {
       const currentDeliveryNum = maxDeliveries + 1;
-      const req = getReqCount(currentDeliveryNum);
-      const batchCost = unitCost * req;
-      const efficiency = reward / batchCost;
+      
+      totalItemsForAvg += getReqCount(currentDeliveryNum);
 
-      if (efficiency >= appData.settings.efficiency_limit) {
+      const totalCostForAvg = unitCost * totalItemsForAvg;
+      const totalProfitForAvg = reward * currentDeliveryNum;
+
+      const averageEfficiency = totalCostForAvg > 0 ? totalProfitForAvg / totalCostForAvg : 0;
+
+      if (averageEfficiency >= appData.settings.efficiency_limit) {
         maxDeliveries++;
       } else {
         keepChecking = false;
       }
     }
 
-    // 납품 추천이 아예 불가능한 경우
+
     if (maxDeliveries === 0) {
       const req = getReqCount(1);
       const eff = reward / (unitCost * req);
@@ -237,8 +305,11 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
         msg: "납품 비추천 (효율 낮음)", 
         averageEfficiency: eff.toFixed(3), 
         unitCost: unitCost.toFixed(1),
+        consumedCoin: consumedCoin.toFixed(1), // Add consumedCoin here
         totalCost: (unitCost * req).toFixed(0),
-        totalStamina: (unitStamina * req).toFixed(0)
+        totalStamina: (unitStamina * req).toFixed(0),
+        totalItems: req, // Add totalItems for consistency
+        totalProfit: (reward * req) // Add totalProfit for consistency
       };
     }
     
@@ -259,6 +330,7 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
     const totalCost = unitCost * finalTotalItems;
     const averageEfficiency = totalCost > 0 ? (totalProfit / totalCost) : 0;
     
+
     return {
       mode: 'default',
       recommend: true,
@@ -267,6 +339,7 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
       totalProfit: totalProfit,
       averageEfficiency: averageEfficiency.toFixed(3),
       unitCost: unitCost.toFixed(1),
+      consumedCoin: consumedCoin.toFixed(1), // Add consumedCoin here
       totalCost: totalCost.toFixed(0),
       totalStamina: (unitStamina * finalTotalItems).toFixed(0)
     };
@@ -301,7 +374,8 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
       totalItems: currentTotal,
       totalProfit: totalProfit,
       averageEfficiency: averageEfficiency.toFixed(3),
-      unitCost: unitCost.toFixed(1), // Keep unitCost in returned object for now
+      unitCost: unitCost.toFixed(1),
+      consumedCoin: consumedCoin.toFixed(1), // Add consumedCoin here
       totalCost: totalCost.toFixed(0),
       totalStamina: (unitStamina * currentTotal).toFixed(0)
     };
@@ -322,7 +396,7 @@ function updateTotalSummary() {
     const res = slotResults[i];
     // 유효하고, 추천된 결과만 집계
     if (res && res.recommend) {
-      totalCoin += parseFloat(res.totalCost) || 0;
+      totalCoin += parseFloat(res.consumedCoin) || 0; // Use consumedCoin for totalCoin
       totalStamina += parseFloat(res.totalStamina) || 0;
       totalNyan += parseFloat(res.totalProfit) || 0;
     }
@@ -373,7 +447,7 @@ function initCalculator() {
   const conservationLevelInput = document.getElementById('conservationLevel');
   const wlbLevelInput = document.getElementById('wlbLevel');
   const ignoreIntermediateStaminaInput = document.getElementById('ignoreIntermediateStamina');
-  const toggleWeavingStaminaRecoveryInput = document.getElementById('toggleWeavingStaminaRecovery');
+
 
   const updateSettings = () => {
     if (!appData.settings) appData.settings = {}; // Ensure appData.settings exists
@@ -402,21 +476,20 @@ function initCalculator() {
             }
         }
         // When WLB is custom or invalid, set recovery to 0 as it's not a numeric level
-        appData.settings.weaving_stamina_recovery_amount = 0;
+
     } else { // WLB level is a valid number
         appData.settings.wlb_level = wlbVal;
         staminaVal = calculateStaminaCost(wlbVal);
         appData.settings.stamina_cost = staminaVal;
         staminaCostInput.value = staminaVal; // Update staminaCost UI
-        appData.settings.weaving_stamina_recovery_amount = wlbVal; // Stamina recovery amount is equal to WLB Level
+
     }
 
     // Update other settings
     appData.settings.efficiency_limit = parseFloat(efficiencyLimitInput.value) || 0.36;
     appData.settings.conservation_level = parseInt(conservationLevelInput.value, 10) || 0;
     appData.settings.ignoreIntermediateStamina = ignoreIntermediateStaminaInput.checked;
-    appData.settings.calculateWeavingStaminaRecovery = toggleWeavingStaminaRecoveryInput.checked;
-    
+
     recalculateAllSlots();
   };
 
@@ -448,8 +521,8 @@ function initCalculator() {
     appData.settings.efficiency_limit = parseFloat(efficiencyLimitInput.value) || 0.36;
     appData.settings.conservation_level = parseInt(conservationLevelInput.value, 10) || 0;
     appData.settings.ignoreIntermediateStamina = ignoreIntermediateStaminaInput.checked;
-    appData.settings.calculateWeavingStaminaRecovery = toggleWeavingStaminaRecoveryInput.checked;
-    appData.settings.weaving_stamina_recovery_amount = appData.settings.wlb_level; // Stamina recovery amount is equal to WLB Level
+
+
     
     // Initial recalculation after settings are applied
 
@@ -471,8 +544,8 @@ function initCalculator() {
 
     efficiencyLimitInput.addEventListener('input', debouncedUpdateSettings);
     conservationLevelInput.addEventListener('input', debouncedUpdateSettings);
-    ignoreIntermediateStaminaInput.addEventListener('change', debouncedUpdateSettings);
-    toggleWeavingStaminaRecoveryInput.addEventListener('change', debouncedUpdateSettings);
+    ignoreIntermediateStaminaInput.addEventListener('change', updateSettings); // Direct call for immediate feedback
+
   }
 
   // Grid Creation ---
@@ -612,10 +685,7 @@ function updateDataList() {
   datalist.innerHTML = '';
   if (!appData.recipes) return; // Guard against missing data
 
-  const intermediateRecipes = appData.recipes.intermediate ? Object.keys(appData.recipes.intermediate) : [];
-  const finalRecipes = appData.recipes.final ? Object.keys(appData.recipes.final) : [];
-  
-  const allItems = [...intermediateRecipes, ...finalRecipes];
+  const allItems = appData.recipes ? Object.keys(appData.recipes) : [];
   
   allItems.sort().forEach(item => {
     const opt = document.createElement('option');
@@ -659,9 +729,13 @@ function renderResult(el, res, recipeInfo) {
       el.innerHTML = `
         <span class="badge bad">납품 비추천</span>
         ${categoryHtml}
-        <div class="stat-row"><span>납품 효율:</span> <span>${res.averageEfficiency}</span></div>
-        <div class="stat-row"><span>소모 코인:</span> <span>${res.totalCost}</span></div>
+        <div class="stat-row"><span>품목 1개당 단가:</span> <span>${res.unitCost}</span></div>
+        <div class="stat-row"><span>필요 개수:</span> <b>${res.totalItems}개</b></div>
+        <div class="stat-row"><span>예상 수입:</span> <b class="profit">${res.totalProfit.toLocaleString()}냥</b></div>
+        <div class="stat-row"><span>소모 코인:</span> <span>${res.consumedCoin}</span></div>
+
         <div class="stat-row"><span>소모 스태미나:</span> <span>${res.totalStamina}</span></div>
+        <div class="stat-row"><span>납품 효율:</span> <span>${res.averageEfficiency}</span></div>
       `;
       return;
     }
@@ -670,9 +744,10 @@ function renderResult(el, res, recipeInfo) {
     el.innerHTML = `
       <span class="badge ${badgeClass}">${res.round}회 납품 추천</span>
       ${categoryHtml}
+      <div class="stat-row"><span>품목 1개당 단가:</span> <span>${res.unitCost}</span></div>
       <div class="stat-row"><span>필요 개수:</span> <b>${res.totalItems}개</b></div>
       <div class="stat-row"><span>예상 수입:</span> <b class="profit">${res.totalProfit.toLocaleString()}냥</b></div>
-      <div class="stat-row"><span>소모 코인:</span> <span>${res.totalCost}</span></div>
+      <div class="stat-row"><span>소모 코인:</span> <span>${res.consumedCoin}</span></div>
       <div class="stat-row"><span>소모 스태미나:</span> <span>${res.totalStamina}</span></div>
       <div class="stat-row"><span>납품 효율:</span> <span>${res.averageEfficiency}</span></div>
     `;
@@ -682,9 +757,10 @@ function renderResult(el, res, recipeInfo) {
     el.innerHTML = `
       <span class="badge info">${badgeText}</span>
       ${categoryHtml}
+      <div class="stat-row"><span>품목 1개당 단가:</span> <span>${res.unitCost}</span></div>
       <div class="stat-row"><span>필요 개수:</span> <b>${res.totalItems}개</b></div>
       <div class="stat-row"><span>예상 수입:</span> <b class="profit">${res.totalProfit.toLocaleString()}냥</b></div>
-      <div class="stat-row"><span>소모 코인:</span> <span>${res.totalCost}</span></div>
+      <div class="stat-row"><span>소모 코인:</span> <span>${res.consumedCoin}</span></div>
       <div class="stat-row"><span>소모 스태미나:</span> <span>${res.totalStamina}</span></div>
       <div class="stat-row"><span>납품 효율:</span> <span>${res.averageEfficiency}</span></div>
     `;
@@ -757,23 +833,7 @@ function initEditor() {
   const recTypeRadios = document.querySelectorAll('input[name="recipeType"]');
   const recCategoryGroup = document.getElementById('recCategoryGroup');
 
-  // 카테고리 드롭다운 가시성 제어 함수
-  const updateCategoryVisibility = () => {
-    const selectedType = document.querySelector('input[name="recipeType"]:checked').value;
-    if (selectedType === 'final') {
-      recCategoryGroup.style.display = 'block';
-    } else {
-      recCategoryGroup.style.display = 'none';
-    }
-  };
-
-  // 초기 로드 시 가시성 설정
-  updateCategoryVisibility();
-
-  // 라디오 버튼 변경 시 가시성 업데이트
-  recTypeRadios.forEach(radio => {
-    radio.addEventListener('change', updateCategoryVisibility);
-  });
+  // 카테고리 드롭다운은 항상 표시
 
   const tryAddRecipe = (e) => {
     if (e.key === 'Enter' && recNameInput.value && recStaminaInput.value && recIngsInput.value) {
@@ -788,10 +848,9 @@ function initEditor() {
     const name = recNameInput.value;
     const stamina = recStaminaInput.value;
     const ingredientsStr = recIngsInput.value;
-    const type = document.querySelector('input[name="recipeType"]:checked').value;
     const category = document.getElementById('recCategory').value;
     
-    if(name && stamina && ingredientsStr && type) {
+    if(name && stamina && ingredientsStr && category) {
       const ingObj = {};
       ingredientsStr.split(',').forEach(part => {
         part = part.trim();
@@ -804,13 +863,12 @@ function initEditor() {
         }
       });
 
-      // Ensure the recipe sub-objects exist
+      // Ensure the recipes object exists
       if (!appData.recipes) appData.recipes = {};
-      if (!appData.recipes[type]) appData.recipes[type] = {};
 
-      appData.recipes[type][name] = {
+      appData.recipes[name] = {
         stamina: parseFloat(stamina),
-        ...(type === 'final' && { category: category }), // Add category only for final recipes
+        category: category, // Category is always added now
         ingredients: ingObj
       };
       renderList('recipes');
@@ -841,38 +899,34 @@ function renderList(type) {
       listEl.appendChild(div);
     });
   } else if (type === 'recipes') {
-    // Handle new recipe structure
-    const renderCategory = (category, title) => {
-      if (source[category]) {
-        const subHeader = document.createElement('h4');
-        subHeader.className = 'list-subheader';
-        subHeader.textContent = title;
-        listEl.appendChild(subHeader);
-
-        Object.keys(source[category]).sort().forEach(key => {
-          const item = source[category][key];
-          const div = document.createElement('div');
-          div.className = 'list-item';
-          const categoryDisplay = item.category ? `(${item.category})` : '';
-          const valStr = `⚡${item.stamina} ${categoryDisplay} / 재료: ${JSON.stringify(item.ingredients)}`;
-          div.innerHTML = `
-            <div><b>${key}</b> <span style="font-size:12px; color:#666">${valStr}</span></div>
-            <button class="btn-sm" onclick="deleteItem('${type}', '${key}', '${category}')">삭제</button>
-          `;
-          listEl.appendChild(div);
-        });
-      }
-    };
-    renderCategory('intermediate', '중간재료');
-    renderCategory('final', '완제품');
+    Object.keys(source).sort((a, b) => {
+        // Sort by category first, then by name
+        const itemA = source[a];
+        const itemB = source[b];
+        if (itemA.category === '가공품' && itemB.category !== '가공품') return -1;
+        if (itemA.category !== '가공품' && itemB.category === '가공품') return 1;
+        if (itemA.category && itemB.category && itemA.category !== itemB.category) {
+            return itemA.category.localeCompare(itemB.category);
+        }
+        return a.localeCompare(b);
+    }).forEach(key => {
+      const item = source[key];
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      const categoryDisplay = item.category ? `(${item.category})` : '';
+      const valStr = `⚡${item.stamina} ${categoryDisplay} / 재료: ${JSON.stringify(item.ingredients)}`;
+      div.innerHTML = `
+        <div><b>${key}</b> <span style="font-size:12px; color:#666">${valStr}</span></div>
+        <button class="btn-sm" onclick="deleteItem('${type}', '${key}')">삭제</button>
+      `;
+      listEl.appendChild(div);
+    });
   }
 }
 
-window.deleteItem = function(type, key, category = null) {
-  if (type === 'recipes' && category) {
-    if (appData.recipes && appData.recipes[category]) {
-      delete appData.recipes[category][key];
-    }
+window.deleteItem = function(type, key) {
+  if (type === 'recipes' && appData.recipes) {
+    delete appData.recipes[key];
   } else if (appData[type]) {
     delete appData[type][key];
   }
