@@ -574,21 +574,23 @@ function initCalculator() {
         const summaryDivContent = `
             <div id="total-summary" class="card">
               <h3>📊 종합 효율 요약</h3>
-              <div class="stat-row">
-                <span>총 소모 코인:</span>
-                <b id="total-coin-cost">0</b>
-              </div>
-              <div class="stat-row">
-                <span>총 소모 스태미나:</span>
-                <b id="total-stamina-cost">0</b>
-              </div>
-              <div class="stat-row">
-                <span>총 획득 냥코인:</span>
-                <b id="total-nyan-gain" class="profit">0</b>
-              </div>
-              <div class="stat-row">
-                <span>최종 교환비:</span>
-                <b id="final-exchange-ratio">0</b>
+              <div class="summary-stats-container">
+                <div class="summary-stat">
+                  <span>총 소모 코인</span>
+                  <b id="total-coin-cost">0</b>
+                </div>
+                <div class="summary-stat">
+                  <span>총 소모 스태미나</span>
+                  <b id="total-stamina-cost">0</b>
+                </div>
+                <div class="summary-stat">
+                  <span>총 획득 냥코인</span>
+                  <b id="total-nyan-gain" class="profit">0</b>
+                </div>
+                <div class="summary-stat">
+                  <span>최종 교환비</span>
+                  <b id="final-exchange-ratio">0</b>
+                </div>
               </div>
             </div>
         `;
