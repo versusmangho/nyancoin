@@ -591,7 +591,7 @@ function initCalculator() {
         // Insert the total-summary div here
         const summaryDivContent = `
             <div id="total-summary" class="card">
-              <h3>📊 종합 효율 요약</h3>
+              <h3>종합 효율 요약</h3>
               <div class="summary-stats-container">
                 <div class="summary-stat">
                   <span>총 소모 코인</span>
@@ -651,6 +651,11 @@ function initCalculator() {
             const captureButton = clonedDoc.getElementById('captureBtn');
             if (captureButton && captureButton.parentElement) {
               captureButton.parentElement.style.display = 'none';
+            }
+            // Hide the clipboard section in the cloned document
+            const clipboardSection = clonedDoc.getElementById('clipboard-section');
+            if (clipboardSection) {
+              clipboardSection.style.display = 'none';
             }
           }
         }).then(canvas => {
