@@ -191,7 +191,7 @@ function getMaterialCost(itemName, visited = new Set(), conservationLevel = 0) {
   return cost;
 }
 
-function getStamina(itemName, visited = new Set(), conservationLevel = 0) {
+function getStamina(itemName, visited = new Set(), conservationLevel = 0, isRoot = true) {
   if (visited.has(itemName)) {
     return 0;
   }
@@ -215,13 +215,15 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0) {
     }
     for (const [ingName, count] of Object.entries(recipe.ingredients)) {
       const reducedCount = Math.round(count * reductionFactor);
-      totalStamina += getStamina(ingName, new Set(visited), conservationLevel) * reducedCount;
+      // Recursive call to getStamina, marking isRoot as false for ingredients
+      totalStamina += getStamina(ingName, new Set(visited), conservationLevel, false) * reducedCount;
     }
   }
 
   // If ignoreIntermediateStamina is ON and this item is an intermediate product,
   // subtract its own stamina contribution from the total, but keep the ingredient stamina.
-  if (appData.settings.ignoreIntermediateStamina && (recipe.category === '가공품' || recipe.category === '방직')) {
+  // Exception: If this is the ROOT item being calculated (isRoot === true), do NOT subtract.
+  if (!isRoot && appData.settings.ignoreIntermediateStamina && (recipe.category === '가공품' || recipe.category === '방직')) {
     return totalStamina - currentItemStamina;
   }
 
@@ -265,6 +267,7 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
     return unitCostResult;
   }
   const unitCost = unitCostResult;
+  // calcEfficiency calls getStamina for the target item, so isRoot uses default (true)
   const unitStamina = getStamina(itemName, new Set(), conservationLevel);
 
 
