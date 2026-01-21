@@ -141,7 +141,7 @@ function getTotalCostIncludingStamina(itemName, visited = new Set(), conservatio
   }
   // Get the effective stamina for this item, including all adjustments (e.g., intermediate, weaving recovery)
   // This value is then converted to NyanCoin and added to the cost.
-  const effectiveStaminaForThisItem = getStamina(itemName, new Set(), conservationLevel);
+  const effectiveStaminaForThisItem = getStamina(itemName, new Set(), conservationLevel, false);
   cost += effectiveStaminaForThisItem * (appData.settings.stamina_cost || 0);
 
   return cost;
@@ -191,7 +191,7 @@ function getMaterialCost(itemName, visited = new Set(), conservationLevel = 0) {
   return cost;
 }
 
-function getStamina(itemName, visited = new Set(), conservationLevel = 0) {
+function getStamina(itemName, visited = new Set(), conservationLevel = 0, isSubCall = false) {
   if (visited.has(itemName)) {
     return 0;
   }
@@ -207,7 +207,7 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0) {
   let currentItemStamina = recipe.stamina || 0; // 현재 아이템의 직접 스태미나
 
   // '중간재료 스태미나 미포함' 설정이 켜져있고 현재 아이템이 '가공품' 또는 '방직' 카테고리라면
-  if (appData.settings.ignoreIntermediateStamina && (recipe.category === '가공품' || recipe.category === '방직')) {
+  if (isSubCall && appData.settings.ignoreIntermediateStamina && (recipe.category === '가공품' || recipe.category === '방직')) {
     currentItemStamina = 0; // 이 아이템의 직접 스태미나는 0으로 처리
   }
 
@@ -222,7 +222,7 @@ function getStamina(itemName, visited = new Set(), conservationLevel = 0) {
     for (const [ingName, count] of Object.entries(recipe.ingredients)) {
       const reducedCount = Math.round(count * reductionFactor);
       // 재귀 호출된 재료의 스태미나는 항상 포함 (여기서 중간재료 여부 판단은 getStamina 내부에서 처리)
-      totalStamina += getStamina(ingName, new Set(visited), conservationLevel) * reducedCount;
+      totalStamina += getStamina(ingName, new Set(visited), conservationLevel, true) * reducedCount;
     }
   }
   
@@ -268,7 +268,7 @@ function calcEfficiency(itemName, reward, deliveryMode = 'default') {
     return unitCostResult;
   }
   const unitCost = unitCostResult;
-  const unitStamina = getStamina(itemName, new Set(), conservationLevel);
+  const unitStamina = getStamina(itemName, new Set(), conservationLevel, false);
 
 
   if (unitCost === 0) return { error: "generic_cost_error" };
