@@ -1188,7 +1188,7 @@
     },
     "손목 커버 샘플": {
       "stamina": 20,
-      "category": "가공품",
+      "category": "방직",
       "ingredients": {
         "일반 합성섬유": 1,
         "고급 모직물": 2,
@@ -1197,7 +1197,7 @@
     },
     "팔찌 샘플": {
       "stamina": 20,
-      "category": "가공품",
+      "category": "방직",
       "ingredients": {
         "일반 가죽": 3,
         "고급 모직물": 2,
@@ -1206,7 +1206,7 @@
     },
     "장갑 샘플": {
       "stamina": 20,
-      "category": "가공품",
+      "category": "방직",
       "ingredients": {
         "일반 합성섬유": 3,
         "고급 모직물": 2,
@@ -1215,7 +1215,7 @@
     },
     "바지 샘플": {
       "stamina": 20,
-      "category": "가공품",
+      "category": "방직",
       "ingredients": {
         "일반 옷감": 3,
         "고급 합성섬유": 2,
@@ -1224,7 +1224,7 @@
     },
     "치마 샘플": {
       "stamina": 20,
-      "category": "가공품",
+      "category": "방직",
       "ingredients": {
         "일반 모직물": 3,
         "고급 비단": 2,
@@ -1233,7 +1233,7 @@
     },
     "양말 샘플": {
       "stamina": 20,
-      "category": "가공품",
+      "category": "방직",
       "ingredients": {
         "일반 합성섬유": 3,
         "고급 옷감": 2,
@@ -1242,7 +1242,7 @@
     },
     "신발 샘플": {
       "stamina": 20,
-      "category": "가공품",
+      "category": "방직",
       "ingredients": {
         "일반 비단": 3,
         "고급 가죽": 2,
@@ -1251,7 +1251,7 @@
     },
     "파우치 샘플": {
       "stamina": 20,
-      "category": "가공품",
+      "category": "방직",
       "ingredients": {
         "일반 비단": 3,
         "고급 가죽": 2,
