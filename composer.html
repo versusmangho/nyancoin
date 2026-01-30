@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OverField Grid Composer</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            /* Base Theme Variables (Default Dark) */
+            --bg-color: #1a1a2e;
+            --panel-color: #16213e;
+            --border-color: #2a2a4e;
+            --text-main: #ffffff;
+            --text-dim: #94a3b8;
+            --primary-color: #ce93d8;
+            
+            /* Row Colors */
+            --color-row-1: #4fc3f7;
+            --color-row-2: #81c784;
+            --color-row-3: #fff176;
+            --color-row-4: #ce93d8;
+
+            /* Beat Colors */
+            --beat-0: #ff5252;
+            --beat-1: #ffea00;
+            --beat-2: #448aff;
+            --beat-3: #e040fb;
+            --beat-4: #ff9800;
+            --beat-5: #00e676;
+
+            --cell-size: 32px;
+            --start-marker-color: #00e676; 
+        }
+
+        /* Light Theme Overrides */
+        [data-theme="light"] {
+            --bg-color: #f8fafc;
+            --panel-color: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+            --text-dim: #64748b;
+            --primary-color: #4f46e5;
+
+            /* Adjust row colors for light bg visibility */
+            --color-row-1: #0288d1;
+            --color-row-2: #388e3c;
+            --color-row-3: #fbc02d;
+            --color-row-4: #8e24aa;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            font-family: 'Pretendard', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: var(--panel-color);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+            gap: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--text-dim);
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.05);
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        [data-theme="dark"] .nav-btn { background: rgba(255,255,255,0.05); }
+
+        .title-area input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--text-dim);
+            color: var(--text-main);
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 5px;
+            width: 180px;
+            transition: 0.3s;
+        }
+        .title-area input:focus {
+            outline: none;
+            border-bottom-color: var(--primary-color);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            flex: 1;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(128,128,128,0.1);
+            padding: 5px 8px;
+            border-radius: 6px;
+        }
+        
+        .control-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-right: 2px;
+        }
+
+        .number-input {
+            width: 45px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--text-dim);
+            color: var(--text-main);
+            text-align: center;
+            font-size: 0.9rem;
+            padding: 2px;
+        }
+        .number-input:focus { outline: none; border-bottom-color: var(--primary-color); }
+
+        select, button {
+            background-color: var(--panel-color);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        button:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .play-btn {
+            width: 36px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            border: 1px solid var(--border-color);
+            color: var(--primary-color);
+        }
+        .play-btn.playing {
+            border-color: #ef5350;
+            color: #ef5350;
+            background-color: rgba(239, 83, 80, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            color: white;
+        }
+
+        .theme-toggle {
+            background: none; border: none; font-size: 1.2rem; padding: 5px;
+        }
+
+        /* --- Main Editor Area --- */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            scroll-behavior: smooth; 
+        }
+
+        #score-container {
+            background-color: var(--panel-color);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: fit-content;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .measure-container {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .measure-controls-side {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            opacity: 0.3;
+            transition: opacity 0.2s;
+        }
+        .measure-container:hover .measure-controls-side { opacity: 1; }
+        
+        .side-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-size: 12px;
+            padding: 4px;
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .side-btn:hover {
+            color: var(--text-main);
+            background: rgba(128,128,128,0.1);
+            border-radius: 4px;
+        }
+        .side-btn.delete:hover { color: #ef5350; }
+
+        .measure-row {
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+        
+        .measure-number {
+            position: absolute;
+            left: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        .beat-box {
+            background-color: rgba(128,128,128,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 6px;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative; 
+            cursor: grab;
+        }
+        .beat-box:active { cursor: grabbing; }
+        .beat-box:hover { border-color: var(--text-dim); }
+
+        .beat-box.dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--primary-color);
+            transform: scale(0.95);
+        }
+        .beat-box.drag-over {
+            border: 2px solid var(--start-marker-color);
+            transform: scale(1.05);
+        }
+        .beat-box.start-beat {
+            border-color: var(--start-marker-color);
+            background-color: rgba(0, 230, 118, 0.05);
+            box-shadow: 0 0 5px rgba(0, 230, 118, 0.2);
+        }
+        .beat-box.start-beat::before {
+            content: '🚩';
+            position: absolute; top: -10px; right: -5px; font-size: 12px; z-index: 6;
+        }
+        .beat-box.playing {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 10px var(--primary-color);
+            transform: scale(1.05);
+            z-index: 5;
+        }
+
+        .beat-controls {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            gap: 2px;
+            margin-bottom: 4px;
+            opacity: 0.1; 
+            transition: opacity 0.2s;
+            height: 16px;
+        }
+        .beat-box:hover .beat-controls { opacity: 1; }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 12px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            filter: grayscale(100%);
+            opacity: 0.7;
+        }
+        .icon-btn:hover { filter: grayscale(0%); transform: scale(1.2); opacity: 1; }
+        .icon-btn.delete-btn:hover { color: #ef5350; filter: none; }
+        .icon-btn.play-here-btn:hover { color: var(--start-marker-color); filter: none; }
+
+        /* Grid & Cells */
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 2px;
+        }
+
+        .key-cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            position: relative;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.1s;
+            opacity: 0.3; 
+            border: 1px solid transparent;
+            overflow: hidden;
+            background: rgba(128,128,128,0.1);
+        }
+        .key-cell.has-data {
+            opacity: 1;
+            transform: scale(1.1);
+            border-color: rgba(255,255,255,0.3);
+            z-index: 2;
+        }
+        [data-theme="light"] .key-cell.has-data { border-color: rgba(0,0,0,0.1); }
+
+        .sub-cell-container {
+            width: 100%; height: 100%; display: flex; position: absolute; top: 0; left: 0; z-index: 1;
+        }
+        .sub-cell { flex: 1; height: 100%; border-right: 1px solid rgba(0,0,0,0.1); }
+        .sub-cell:last-child { border-right: none; }
+
+        .key-label {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 10px; font-weight: bold; z-index: 2; pointer-events: none;
+            color: var(--text-dim);
+        }
+        .key-cell.has-data .key-label { color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        
+        .row-0 .key-label { color: var(--color-row-1); }
+        .row-1 .key-label { color: var(--color-row-2); }
+        .row-2 .key-label { color: var(--color-row-3); }
+        .row-3 .key-label { color: var(--color-row-4); }
+
+        /* Note Colors */
+        .sub-cell.state-0 { background-color: var(--beat-0); }
+        .sub-cell.state-1 { background-color: var(--beat-1); }
+        .sub-cell.state-2 { background-color: var(--beat-2); }
+        .sub-cell.state-3 { background-color: var(--beat-3); }
+        .sub-cell.state-4 { background-color: var(--beat-4); }
+        .sub-cell.state-5 { background-color: var(--beat-5); }
+
+        /* Footer */
+        .editor-controls, .editor-controls-top {
+            margin: 10px 0; width: 100%; display: flex; justify-content: center;
+        }
+        .add-btn {
+            width: 300px; padding: 10px; font-size: 1rem;
+            background: transparent; border: 1px dashed var(--text-dim); color: var(--text-dim);
+            border-radius: 8px;
+        }
+        .add-btn:hover {
+            border-color: var(--text-main); color: var(--text-main); background: rgba(128,128,128,0.05);
+        }
+
+        .legend {
+            display: flex; gap: 15px; margin-bottom: 10px; font-size: 0.8rem; color: var(--text-dim); flex-wrap: wrap; justify-content: center;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
+
+        #file-input { display: none; }
+        #toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.8); color: white; padding: 10px 20px;
+            border-radius: 20px; font-size: 0.9rem; pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 100;
+        }
+        #toast.show { opacity: 1; }
+        #countdown-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center; font-size: 5rem;
+            font-weight: bold; color: white; z-index: 200; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+        }
+        #countdown-overlay.active { opacity: 1; }
+
+    </style>
+</head>
+<body data-theme="dark">
+
+    <header>
+        <div class="header-left">
+            <a href="index.html" class="nav-btn">🏠 냥코인 계산기</a>
+            <div class="title-area">
+                <input type="text" id="song-title" value="제목 없는 노래" placeholder="곡 제목 입력">
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="theme-toggle" onclick="toggleTheme()" title="테마 변경">🌙</button>
+
+            <!-- Mode Selection -->
+            <div class="control-group">
+                <span class="control-label">모드</span>
+                <select id="play-mode" onchange="updateControlVisibility()">
+                    <option value="bpm">BPM 재생</option>
+                    <option value="scroll">자동 스크롤</option>
+                </select>
+            </div>
+
+            <!-- BPM Controls -->
+            <div class="control-group" id="ctrl-bpm">
+                <span class="control-label">BPM</span>
+                <input type="number" id="bpm-input" class="number-input" value="120" step="1" min="10" max="300">
+            </div>
+
+            <!-- Scroll Controls (Hidden by default) -->
+            <div class="control-group" id="ctrl-scroll" style="display:none;">
+                <span class="control-label">속도</span>
+                <input type="number" id="scroll-speed" class="number-input" value="1.0" step="0.1" min="0.1">
+            </div>
+
+            <!-- Delay Control -->
+            <div class="control-group">
+                <span class="control-label">대기</span>
+                <input type="number" id="start-delay" class="number-input" value="0" step="1" min="0" max="10">
+            </div>
+
+            <!-- Play Button -->
+            <button id="play-btn" class="play-btn" onclick="togglePlay()" title="재생/정지">▶</button>
+
+            <!-- Time Sig -->
+            <div class="control-group">
+                <span class="control-label">박자</span>
+                <select id="time-sig">
+                    <option value="3">3/4</option>
+                    <option value="4" selected>4/4</option>
+                    <option value="6">6/8</option>
+                </select>
+            </div>
+            
+            <button onclick="document.getElementById('file-input').click()">열기</button>
+            <button onclick="exportJSON()">저장</button>
+            <button class="btn-primary" onclick="exportImage()">이미지</button>
+            <button onclick="clearScore()" style="border-color: #ef5350; color: #ef5350;">초기화</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background:var(--beat-0)"></div>정박</div>
+            <div class="legend-item"><div class="legend-color" style="background:var(--beat-2)"></div>반박</div>
+            <div class="legend-item"><div class="legend-color" style="background:var(--beat-1)"></div>16분</div>
+            <div class="legend-item"><div class="legend-color" style="background:var(--beat-3)"></div>점8분</div>
+            <div class="legend-item"><div class="legend-color" style="background:var(--beat-4)"></div>셋잇단1(휠)</div>
+            <div class="legend-item"><div class="legend-color" style="background:var(--beat-5)"></div>셋잇단2(휠)</div>
+        </div>
+
+        <div class="editor-controls-top">
+            <button class="add-btn" onclick="addMeasure('top')">+ 1마디 추가 (위)</button>
+        </div>
+
+        <div id="score-container">
+            <!-- Grid generated by JS -->
+        </div>
+        
+        <div class="editor-controls">
+            <button class="add-btn" onclick="addMeasure('bottom')">+ 1마디 추가 (아래)</button>
+        </div>
+    </main>
+
+    <input type="file" id="file-input" accept=".json" onchange="loadJSON(this)">
+    <div id="toast">메시지</div>
+    <div id="countdown-overlay">3</div>
+
+    <script>
+        // --- Theme Logic ---
+        function toggleTheme() {
+            const body = document.body;
+            const current = body.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', next);
+            localStorage.setItem('overfield_theme', next);
+            updateThemeBtn(next);
+        }
+
+        function updateThemeBtn(theme) {
+            const btn = document.querySelector('.theme-toggle');
+            btn.innerText = theme === 'light' ? '☀️' : '🌙';
+        }
+
+        // Initialize Theme
+        const savedTheme = localStorage.getItem('overfield_theme') || 'dark';
+        document.body.setAttribute('data-theme', savedTheme);
+        updateThemeBtn(savedTheme);
+
+
+        // --- Composer Logic (Existing) ---
+        const KEY_MAP = [
+            ['1', '2', '3', '4', '5', '6', '7'], 
+            ['Q', 'W', 'E', 'R', 'T', 'Y', 'U'], 
+            ['A', 'S', 'D', 'F', 'G', 'H', 'J'], 
+            ['Z', 'X', 'C', 'V', 'B', 'N', 'M']  
+        ];
+        const STORAGE_KEY = 'overfield_composer_backup';
+
+        let scoreData = { title: "제목 없는 노래", timeSignature: 4, measures: [] };
+        let clipboardBeat = null;
+        let clipboardMeasure = null; 
+        let draggedBeat = null; 
+        let isPlaying = false;
+        let playbackId = null; 
+        let currentBeatIndex = 0; 
+        let startBeatIndex = 0; 
+        
+        const container = document.getElementById('score-container');
+        const mainElement = document.querySelector('main');
+        const playBtn = document.getElementById('play-btn');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+
+        function init() {
+            if (!loadState()) addMeasures(4);
+            document.getElementById('time-sig').addEventListener('change', (e) => updateTimeSignature(parseInt(e.target.value)));
+            document.getElementById('song-title').addEventListener('input', (e) => { scoreData.title = e.target.value; saveState(); });
+            updateControlVisibility();
+        }
+
+        function handleDragStart(e, mIndex, bIndex) { draggedBeat = { mIndex, bIndex }; e.dataTransfer.effectAllowed = 'move'; e.target.classList.add('dragging'); }
+        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; const target = e.currentTarget; if (!target.classList.contains('dragging')) target.classList.add('drag-over'); }
+        function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+        function handleDrop(e, targetMIndex, targetBIndex) {
+            e.preventDefault(); e.stopPropagation();
+            const targetBox = document.getElementById(`beat-${targetMIndex}-${targetBIndex}`); targetBox.classList.remove('drag-over');
+            if (!draggedBeat || (draggedBeat.mIndex === targetMIndex && draggedBeat.bIndex === targetBIndex)) return;
+            const sourceData = scoreData.measures[draggedBeat.mIndex][draggedBeat.bIndex];
+            const targetData = scoreData.measures[targetMIndex][targetBIndex];
+            scoreData.measures[draggedBeat.mIndex][draggedBeat.bIndex] = targetData;
+            scoreData.measures[targetMIndex][targetBIndex] = sourceData;
+            saveState(); render(); draggedBeat = null;
+        }
+        function handleDragEnd(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.beat-box').forEach(el => el.classList.remove('drag-over')); }
+
+        function updateControlVisibility() {
+            const mode = document.getElementById('play-mode').value;
+            document.getElementById('ctrl-bpm').style.display = mode === 'bpm' ? 'flex' : 'none';
+            document.getElementById('ctrl-scroll').style.display = mode !== 'bpm' ? 'flex' : 'none';
+        }
+
+        function togglePlay() { isPlaying ? stopPlayback() : preparePlayback(); }
+        function playFromBeat(mIndex, bIndex) { startBeatIndex = (mIndex * scoreData.timeSignature) + bIndex; render(); if(isPlaying) stopPlayback(); setTimeout(preparePlayback, 10); }
+        
+        function preparePlayback() {
+            const delay = parseInt(document.getElementById('start-delay').value) || 0;
+            if (delay > 0) {
+                playBtn.disabled = true; let count = delay; countdownOverlay.innerText = count; countdownOverlay.classList.add('active');
+                const timer = setInterval(() => { count--; if(count>0) countdownOverlay.innerText = count; else { clearInterval(timer); countdownOverlay.classList.remove('active'); playBtn.disabled = false; startPlayback(); } }, 1000);
+            } else startPlayback();
+        }
+
+        function startPlayback() {
+            isPlaying = true; playBtn.innerText = '⏹'; playBtn.classList.add('playing');
+            document.getElementById('play-mode').value === 'bpm' ? startBPMMode() : startScrollMode();
+        }
+
+        function stopPlayback() {
+            isPlaying = false; playBtn.innerText = '▶'; playBtn.classList.remove('playing');
+            if(playbackId) clearInterval(playbackId); cancelAnimationFrame(playbackId); playbackId = null;
+            document.querySelectorAll('.beat-box.playing').forEach(el => el.classList.remove('playing'));
+        }
+
+        function startBPMMode() {
+            const bpm = parseInt(document.getElementById('bpm-input').value) || 120;
+            const msPerBeat = (60 / bpm) * 1000;
+            const totalBeats = scoreData.measures.length * scoreData.timeSignature;
+            currentBeatIndex = startBeatIndex - 1; tickBPM(totalBeats);
+            playbackId = setInterval(() => tickBPM(totalBeats), msPerBeat);
+        }
+
+        function tickBPM(totalBeats) {
+            document.querySelector('.beat-box.playing')?.classList.remove('playing');
+            currentBeatIndex++;
+            if (currentBeatIndex >= totalBeats) { stopPlayback(); showToast("연주 종료 👏"); return; }
+            const mIndex = Math.floor(currentBeatIndex / scoreData.timeSignature);
+            const bIndex = currentBeatIndex % scoreData.timeSignature;
+            const beatBox = document.getElementById(`beat-${mIndex}-${bIndex}`);
+            if (beatBox) { beatBox.classList.add('playing'); if(bIndex===0 || currentBeatIndex===startBeatIndex) beatBox.scrollIntoView({behavior:'smooth', block:'center'}); }
+        }
+
+        function startScrollMode() {
+            const speed = parseFloat(document.getElementById('scroll-speed').value) || 1.0;
+            const loop = () => { if(isPlaying) { mainElement.scrollTop += speed; playbackId = requestAnimationFrame(loop); } };
+            playbackId = requestAnimationFrame(loop);
+        }
+
+        function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(scoreData)); } catch(e){} }
+        function loadState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if(saved) { try { 
+                const d = JSON.parse(saved);
+                if(d.measures.length>0) d.measures = d.measures.map(m => m.map(b => { Object.keys(b).forEach(k => { if(!Array.isArray(b[k])) b[k]=[b[k]]; }); return b; }));
+                scoreData = d; document.getElementById('song-title').value = d.title; document.getElementById('time-sig').value = d.timeSignature; startBeatIndex=0; render(); return true;
+            } catch(e){ return false; } } return false;
+        }
+
+        function createEmptyMeasure(beats) { const m=[]; for(let i=0; i<beats; i++) m.push({}); return m; }
+        function addMeasures(count) { for(let i=0; i<count; i++) scoreData.measures.push(createEmptyMeasure(scoreData.timeSignature)); saveState(); render(); }
+        function addMeasure(pos) { const nm = createEmptyMeasure(scoreData.timeSignature); if(pos==='top') { scoreData.measures.unshift(nm); if(startBeatIndex>0) startBeatIndex+=scoreData.timeSignature; } else scoreData.measures.push(nm); saveState(); render(); }
+        function moveMeasure(idx, dir) {
+            if((dir===-1 && idx>0) || (dir===1 && idx<scoreData.measures.length-1)) {
+                const temp = scoreData.measures[idx]; scoreData.measures[idx] = scoreData.measures[idx+dir]; scoreData.measures[idx+dir] = temp;
+                saveState(); render();
+            }
+        }
+        function deleteMeasure(idx) { if(scoreData.measures.length<=1 || !confirm('삭제하시겠습니까?')) return; scoreData.measures.splice(idx,1); startBeatIndex=0; saveState(); render(); }
+        function copyMeasure(idx) { clipboardMeasure = JSON.parse(JSON.stringify(scoreData.measures[idx])); showToast("마디 복사됨"); }
+        function pasteMeasure(idx) { if(!clipboardMeasure) return; scoreData.measures[idx] = JSON.parse(JSON.stringify(clipboardMeasure)); saveState(); render(); showToast("붙여넣기 완료"); }
+        
+        function updateTimeSignature(sig) {
+            const all = scoreData.measures.flat(); scoreData.timeSignature = sig; scoreData.measures = [];
+            while(all.length>0) { const c = all.splice(0,sig); while(c.length<sig) c.push({}); scoreData.measures.push(c); }
+            startBeatIndex=0; if(scoreData.measures.length<4) addMeasures(4-scoreData.measures.length); else { saveState(); render(); }
+        }
+
+        function getNoteData(m,b,k) { const beat=scoreData.measures[m][b]; if(!beat[k]) return [null]; return Array.isArray(beat[k]) ? beat[k] : [beat[k]]; }
+        function setNoteData(m,b,k,arr) { const beat=scoreData.measures[m][b]; if(arr.every(v=>v===null) && arr.length===1) delete beat[k]; else beat[k]=arr; saveState(); renderCell(m,b); }
+        function handleKeyWheel(e,m,b,k) { e.preventDefault(); const d=getNoteData(m,b,k); if(e.deltaY<0 && d.length<4) d.push(null); else if(e.deltaY>0 && d.length>1) d.pop(); setNoteData(m,b,k,d); }
+        function toggleSubCell(m,b,k,si,type) {
+            const d=getNoteData(m,b,k); while(d.length<=si) d.push(null);
+            const c=d[si]; let n=null;
+            if(type==='left') n = (c===null||c===undefined)?0:(c<3?c+1:null);
+            else if(type==='right') n = (c===null||c===undefined)?0:(c===0?2:null);
+            else if(type==='wheel') n = (c<4)?4:(c===4?5:null);
+            d[si]=n; setNoteData(m,b,k,d);
+        }
+        function clearBeat(m,b) { scoreData.measures[m][b]={}; saveState(); renderCell(m,b); }
+        function clearScore() { if(confirm('전체 초기화?')) { scoreData.measures=[]; addMeasures(4); startBeatIndex=0; saveState(); render(); showToast("초기화됨"); } }
+        function copyBeat(m,b) { clipboardBeat = JSON.parse(JSON.stringify(scoreData.measures[m][b])); showToast("복사됨"); }
+        function pasteBeat(m,b) { if(clipboardBeat) { scoreData.measures[m][b] = JSON.parse(JSON.stringify(clipboardBeat)); saveState(); renderCell(m,b); showToast("붙여넣기 완료"); } }
+        function showToast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+
+        function render() {
+            container.innerHTML = '';
+            scoreData.measures.forEach((m, mIndex) => {
+                const wrapper = document.createElement('div'); wrapper.className = 'measure-container';
+                const controlsSide = document.createElement('div'); controlsSide.className = 'measure-controls-side';
+                controlsSide.innerHTML = `
+                    <button class="side-btn" onclick="moveMeasure(${mIndex},-1)">▲</button>
+                    <button class="side-btn" onclick="moveMeasure(${mIndex},1)">▼</button>
+                    <button class="side-btn" onclick="copyMeasure(${mIndex})">📋</button>
+                    <button class="side-btn" onclick="pasteMeasure(${mIndex})">📥</button>
+                    <button class="side-btn delete" onclick="deleteMeasure(${mIndex})">🗑</button>
+                `;
+                wrapper.appendChild(controlsSide);
+
+                const mRow = document.createElement('div'); mRow.className = 'measure-row';
+                mRow.innerHTML = `<div class="measure-number">${mIndex+1}</div>`;
+                
+                m.forEach((beatData, bIndex) => {
+                    const box = document.createElement('div'); box.className = 'beat-box'; box.id = `beat-${mIndex}-${bIndex}`;
+                    box.draggable = true;
+                    box.ondragstart = (e) => handleDragStart(e, mIndex, bIndex); box.ondragover = handleDragOver; box.ondragleave = handleDragLeave; box.ondrop = (e) => handleDrop(e, mIndex, bIndex); box.ondragend = handleDragEnd;
+                    if((mIndex*scoreData.timeSignature)+bIndex === startBeatIndex) box.classList.add('start-beat');
+
+                    const ctrls = document.createElement('div'); ctrls.className = 'beat-controls';
+                    ctrls.innerHTML = `
+                        <button class="icon-btn play-here-btn" onclick="event.stopPropagation(); playFromBeat(${mIndex}, ${bIndex})" title="여기서 재생">▶</button>
+                        <button class="icon-btn" onclick="event.stopPropagation(); copyBeat(${mIndex}, ${bIndex})">📋</button>
+                        <button class="icon-btn" onclick="event.stopPropagation(); pasteBeat(${mIndex}, ${bIndex})">📥</button>
+                        <button class="icon-btn delete-btn" onclick="event.stopPropagation(); clearBeat(${mIndex}, ${bIndex})">🗑</button>
+                    `;
+                    box.appendChild(ctrls);
+                    renderGridInBox(box, beatData, mIndex, bIndex);
+                    mRow.appendChild(box);
+                });
+                wrapper.appendChild(mRow); container.appendChild(wrapper);
+            });
+        }
+
+        function renderCell(m,b) { const box=document.getElementById(`beat-${m}-${b}`); if(box) { const old=box.querySelector('.mini-grid'); if(old) box.removeChild(old); renderGridInBox(box, scoreData.measures[m][b], m, b); } }
+
+        function renderGridInBox(box, beatData, mIndex, bIndex) {
+            const grid = document.createElement('div'); grid.className = 'mini-grid';
+            KEY_MAP.forEach((row, rIndex) => {
+                row.forEach(key => {
+                    const cell = document.createElement('div');
+                    const arr = beatData[key] ? (Array.isArray(beatData[key])?beatData[key]:[beatData[key]]) : [null];
+                    cell.className = `key-cell row-${rIndex} ${beatData[key]!==undefined?'has-data':''}`;
+                    cell.onwheel = (e) => handleKeyWheel(e, mIndex, bIndex, key);
+                    
+                    const subCont = document.createElement('div'); subCont.className = 'sub-cell-container';
+                    arr.forEach((st, si) => {
+                        const sc = document.createElement('div'); sc.className = `sub-cell ${st!==null?'state-'+st:''}`;
+                        sc.onclick = (e) => { e.stopPropagation(); toggleSubCell(mIndex, bIndex, key, si, 'left'); };
+                        sc.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); toggleSubCell(mIndex, bIndex, key, si, 'right'); };
+                        sc.onauxclick = (e) => { if(e.button===1) { e.preventDefault(); e.stopPropagation(); toggleSubCell(mIndex, bIndex, key, si, 'wheel'); } };
+                        sc.onmousedown = (e) => { if(e.button===1) e.preventDefault(); };
+                        subCont.appendChild(sc);
+                    });
+                    cell.appendChild(subCont);
+                    
+                    const label = document.createElement('div');
+                    label.className = 'key-label';
+                    label.innerText = key;
+                    cell.appendChild(label);
+                    
+                    grid.appendChild(cell);
+                });
+            });
+            box.appendChild(grid);
+        }
+
+        function exportJSON() { const s="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(scoreData)); const a=document.createElement('a'); a.href=s; a.download=`${scoreData.title}.json`; document.body.appendChild(a); a.click(); a.remove(); }
+        function loadJSON(input) { const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=e=>{ try{ const d=JSON.parse(e.target.result); if(d.measures.length>0) d.measures=d.measures.map(m=>m.map(b=>{ Object.keys(b).forEach(k=>{ if(!Array.isArray(b[k])) b[k]=[b[k]]; }); return b; })); scoreData=d; document.getElementById('song-title').value=d.title; document.getElementById('time-sig').value=d.timeSignature; saveState(); render(); showToast("불러오기 완료"); }catch(err){ alert('오류'); } }; r.readAsText(f); input.value=''; }
+        function exportImage() {
+            container.classList.add('capturing'); document.querySelectorAll('.beat-controls, .measure-controls-side').forEach(e=>e.style.display='none');
+            const style = document.createElement('style'); style.innerHTML = '.beat-box.start-beat::before { display: none !important; } .beat-box.start-beat { border-color: var(--border-color) !important; background-color: rgba(128,128,128,0.03) !important; box-shadow: none !important; }'; document.head.appendChild(style);
+            
+            // Capture using current theme bg
+            html2canvas(container, { backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg-color'), scale: 2 }).then(c => {
+                const a = document.createElement('a'); a.download = `${scoreData.title}.png`; a.href = c.toDataURL(); a.click();
+                document.querySelectorAll('.beat-controls, .measure-controls-side').forEach(e=>e.style.display=''); container.classList.remove('capturing'); document.head.removeChild(style);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
